@@ -1,12 +1,11 @@
-from typing import List, Optional
+from typing import List
 from select import select
 import socket
 import logging
 
-from map_utils import Direction
+from map_utils import *
 from reactor import Handler
 from lobby_manager import LobbyManager
-from tank import Tank
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class Client(Handler):
 
         self.sock = sock
         self.socket_buffer = b""
-        self.tank: Optional[Tank] = None
+        self.lobby = None
 
     def fileno(self) -> int:
         return self.sock.fileno()
@@ -28,8 +27,13 @@ class Client(Handler):
     def close(self):
         self.sock.close()
 
+    def send_message(self, message: str):
+        print(f"Sending: {message}")
+        message += ";\n"
+        self.sock.sendall(message.encode())
+
     def read_all_from_socket(self):
-        logging.debug("Start reading client's socket")
+        # logging.debug("Start reading client's socket")
         while True:
             if (fileno := self.sock.fileno()) <= 0:
                 self.close()
@@ -41,41 +45,46 @@ class Client(Handler):
                     logging.debug("Closing socket")
                     self.close()
                     return
+                logger.debug(f"cur_read: {cur_read}")
                 self.socket_buffer += cur_read
             else:
-                logging.debug("Done reading")
+                # logging.debug("Done reading")
                 return
 
     def handle_game_message(self, partial_message: List[str]):
-        if self.tank is None:
-            raise RuntimeError("Cannot handle Game message since Tank is none")
         match(partial_message):
-            case ["Tank", "Move"]:
-                self.tank.move()
+            case ["Tank", "Move", x, y]:
+                x, y = reverse_location(x, y)
+                self.notify_others(f"Enemy.Move.{x}.{y}")
             case ["Tank", "Rotate", direction]:
-                self.tank.rotate(Direction[direction])
+                self.notify_others(f"Enemy.Rotate.{reverse_direction(direction)}")
             case ["Tunnel", "Start"]:
-                self.tank.is_tunneling = True
+                self.notify_others(f"Enemy.Tunnel.Start")
+            case ["Trails", "Remove"]:
+                self.notify_others(f"Enemy.Trails.Remove")
+            case ["Trails", "Add", x, y, direction]:
+                x, y = reverse_location(x, y)
+                self.notify_others(f"Enemy.Trails.Add.{x}.{y}.{reverse_direction(direction)}")
             case _:
-                logger.info("Unknown message ignored.")
+                logger.error(f"Unknown game message ignored: {partial_message}")
 
     def handle_message(self, split_message: List[str]):
-        print(split_message)
         match(split_message):
             case ["Lobby", "Connect", gameid, password]:
-                lobby = LobbyManager.instance.get_or_create_lobby(int(gameid))
-                self.tank = lobby.connect(self, int(password))
-                if self.tank:
-                    logger.info("Assigned tank!")
-                else:
-                    logger.info("No tank assigned!")
+                self.lobby = LobbyManager.instance.get_or_create_lobby(int(gameid))
+                self.lobby.connect(self, int(password))
             case ["Game", *other]:
                 self.handle_game_message(other)
             case _:
-                logger.info("Unknown message ignored.")
+                logger.error(f"Unknown general message ignored: {split_message}")
+
+    def notify_others(self, message: str):
+        logger.info(f"Sending to other clients: {message}")
+        if self.lobby:
+            self.lobby.send_to_other_clients(self, message)
 
     def handle(self) -> None:
-        logging.info("Handling")
+        # logging.info("Handling")
         self.read_all_from_socket()
         split_result = self.socket_buffer.split(b";")
         self.socket_buffer = split_result[-1]

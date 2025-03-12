@@ -18,7 +18,7 @@ class Server(Handler):
         return self.server_socket.fileno()
 
     def handle(self) ->  None:
-        logger.info("Accepting new connection")
+        # logger.info("Accepting new connection")
         client_socket, _ = self.server_socket.accept()
         Reactor.instance().add(Client(client_socket))
         self.server_socket.listen()

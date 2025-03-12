@@ -44,7 +44,6 @@ class Reactor:
                 self.handlers = [handler for handler in self.handlers if handler.fileno() > 0]
                 try:
                     result, _, _ = select.select(self.handlers, [], [])
-                    print(result)
                 except ValueError:
                     pass
                 else:
