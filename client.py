@@ -45,8 +45,11 @@ class Client(Handler):
                     logging.debug("Closing socket")
                     self.close()
                     return
-                logger.debug(f"cur_read: {cur_read}")
                 self.socket_buffer += cur_read
+                if b"http-client" in self.socket_buffer:
+                    self.close()
+                    return
+                print(cur_read)
             else:
                 # logging.debug("Done reading")
                 return
