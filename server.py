@@ -10,8 +10,10 @@ logger = logging.getLogger(__name__)
 class Server(Handler):
     def __init__(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM, 0)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind(("0.0.0.0", 41337))
+        # self.server_socket.bind(("::1", 41337))
         self.server_socket.listen()
 
     def fileno(self) -> int:

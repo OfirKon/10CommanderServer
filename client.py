@@ -53,11 +53,24 @@ class Client(Handler):
 
     def handle_game_message(self, partial_message: List[str]):
         match(partial_message):
+            case ["Tank", "Rotate", direction]:
+                self.notify_others(f"Enemy.Rotate.{reverse_direction(direction)}")
             case ["Tank", "Move", x, y]:
                 x, y = reverse_location(x, y)
                 self.notify_others(f"Enemy.Move.{x}.{y}")
-            case ["Tank", "Rotate", direction]:
-                self.notify_others(f"Enemy.Rotate.{reverse_direction(direction)}")
+            case ["Tank", "Shoot", x, y]:
+                x, y = reverse_location(x, y)
+                self.notify_others(f"Enemy.Shoot.{x}.{y}")
+            case ["Tank", "Flash", x, y]:
+                x, y = reverse_location(x, y)
+                self.notify_others(f"Enemy.Flash.{x}.{y}")
+            case ["Tank", "Smoke"]:
+                self.notify_others(f"Enemy.Smoke")
+            case ["Tank", "Decoy", x, y]:
+                x, y = reverse_location(x, y)
+                self.notify_others(f"Enemy.Decoy.{x}.{y}")
+            case ["Tank", "Damage", damage]:
+                self.notify_others(f"Enemy.Hurt.{damage}")
             case ["Tunnel", "Start"]:
                 self.notify_others(f"Enemy.Tunnel.Start")
             case ["Trails", "Remove"]:
@@ -89,7 +102,11 @@ class Client(Handler):
         split_result = self.socket_buffer.split(b";")
         self.socket_buffer = split_result[-1]
         for message in split_result[:-1]:
-            message = message.decode().strip()
+            try:
+                message = message.decode().strip()
+            except UnicodeDecodeError:
+                logger.exception(f"Failed to decode message")
+                continue
             logger.info(f"Client {self.id}: Handling message: {message}")
             try:
                 self.handle_message(message.split("."))

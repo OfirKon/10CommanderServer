@@ -25,6 +25,11 @@ class Lobby:
         logger.info("New client connected!")
         self.password_to_client[password] = client
 
+        if len(self.password_to_client) >= MAX_LOBBY_SIZE:
+            logger.info("Starting game!")
+            for client in self.password_to_client.values():
+                client.send_message("Game.Start")
+
     def send_to_other_clients(self, client: "client.Client", message: str):
         other_clients = set(self.password_to_client.values()) - {client}
         for client in other_clients:
