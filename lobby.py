@@ -12,6 +12,7 @@ class Lobby:
         self.password_to_client: Dict[int, client.Client] = {}
 
     def connect(self, client: "client.Client", password: int):
+        self.remove_closed_clients()
         if client in self.password_to_client.values():
             raise RuntimeError("Same client tried to connect again.")
         if password in self.password_to_client:
@@ -29,6 +30,15 @@ class Lobby:
             logger.info("Starting game!")
             for client in self.password_to_client.values():
                 client.send_message("Game.Start")
+
+    def remove_closed_clients(self):
+        keys_to_remove = []
+        for key, client in self.password_to_client.items():
+            if client.is_closed:
+                keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            del self.password_to_client[key]
 
     def send_to_other_clients(self, client: "client.Client", message: str):
         other_clients = set(self.password_to_client.values()) - {client}

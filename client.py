@@ -20,11 +20,13 @@ class Client(Handler):
         self.sock = sock
         self.socket_buffer = b""
         self.lobby = None
+        self.is_closed = False
 
     def fileno(self) -> int:
         return self.sock.fileno()
 
     def close(self):
+        self.is_closed = True
         self.sock.close()
 
     def send_message(self, message: str):
